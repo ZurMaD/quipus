@@ -1,241 +1,175 @@
 #%%
-import normalization as norm
-import networkBuilding as nBuilding
-import predict as predict
-import drawGraph as draw
+from quipus import HLNB_BC, Quipus
+import tools
+
+# from main import Quipus,getDataCSV
+# import normalization as norm
+# import networkBuilding as nBuilding
+# import predict as predict
 import numpy as np
-import networkx as nx
-import matplotlib.pyplot as plt
-import math
-import pandas as pd
+
+# import networkx as nx
+# import matplotlib.pyplot as plt
+# import math
+# import pandas as pd
+# from datetime import datetime
 from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.model_selection import KFold, ShuffleSplit, StratifiedKFold
-from sklearn.model_selection import GridSearchCV
-import operator
-# https://github.com/ctgk/PRML/blob/master/notebooks/ch05_Neural_Networks.ipynb
+from sklearn.model_selection import KFold, ShuffleSplit, StratifiedKFold, GridSearchCV
 
-class Quipus:
-    knn = None
-    X_train = []
-    Y_train = []
-    def score(self, X_test, Y_test):
-         self.predict(X_test, Y_test)   
-    def predict(self, X_test, Y_test=[]):
-        # (self.X_train, X_test) = norm.preprocess(self.X_train, X_test,1)
-        result = []
-        # (self.X_train, X_test) = norm.preprocess(self.X_train, X_test)
-        g, nbrs = nBuilding.networkBuildKnn(
-            self.X_train, self.Y_train, self.knn, self.eRadius,labels=True)
-        # nBuilding.getProperty(g)
-        # draw.drawGraph(g,title="Graph Iris Dataset k="+str(self.knn)+" e="+str(self.eRadius)+ " b=10 α=0.0" )
-        # draw.drawGraph(g,title="" )
-        results=[]
-        for index, instance in enumerate(X_test):
-            indexNode=g.graph["lnNet"]+index
-            if(len(Y_test)==0):
-                nBuilding.insertNode(g,nbrs,instance)
-            else:    
-                nBuilding.insertNode(g,nbrs,instance,Y_test[index])
-            # draw.drawGraph(g,"New Dark Node Inserted")
-            tmpResults = predict.prediction(g,indexNode,self.bnn,self.deepNeighbors)
-            results.append(tmpResults)
-            maxIndex=np.argmax(tmpResults)
-            newLabel=g.graph["classNames"][maxIndex]
-            result.append(newLabel)
-            # g.remove_node(str(indexNode))
-            g.nodes[str(indexNode)]["label"]=newLabel
-            nn = list(nx.neighbors(g,str(indexNode)))
-            for node in nn:
-                if(g.nodes[str(node)]["label"]!=newLabel):
-                    g.remove_edge(str(node),str(indexNode))
-            # draw.drawGraph(g,"Final Node")
-            for edge in g.edges:
-                g.edges[edge]["color"]="#9db4c0"
-            g.graph["index"]+=1
-        # draw.drawGraph(g,title="")
-        
-        if(len(Y_test)!=0):
-            print("RESULT:",np.array(result))
-            print("Y_TEST:",np.array(Y_test))
-            acc=0
-            err=[]
-            err.append(g.graph["classNames"])
-            for index,element in enumerate(result):
-                if(element==Y_test[index]):
-                    acc+=1
-                else:
-                    err.append([element,Y_test[index],results[index]])
-            acc/=len(X_test)
-            
-            print("ERRORS: ", err)
-            print("Accuracy ",round(acc,2),"%")
-        return result
-    def fit(self, X_train, Y_train):
-        self.X_train = X_train
-        self.Y_train = Y_train
-        self.partitionOptimization = 0.5
-
-    def __init__(self, knn=3, eRadius=0.5,bnn=3,alpha=1.0, deepNeighbors=1):
-        self.knn = knn
-        self.bnn = bnn
-        self.alpha = alpha
-        self.eRadius = eRadius
-        self.deepNeighbors = deepNeighbors
-
-    def get_params(self, deep=False):
-        return {'knn': self.knn, 'eRadius': self.eRadius, "bnn":self.bnn, "alpha":self.alpha, 'deepNeighbors': self.deepNeighbors}
-
-    def set_params(self, **parameters):
-        for parameter, value in parameters.items():
-            setattr(self, parameter, value)
-        return self
-def getDataCSV(url, className="Class"):
-    dataset = {}
-    data = pd.read_csv(url, keep_default_na=False,  na_values=np.nan)
-    if(len(data.values[0]) == 1):
-        data = pd.read_csv(url, ";", keep_default_na=False,  na_values=np.nan)
-    dataset['target'] = data[className].values
-    dataset['data'] = data.drop(className, axis=1).values
-    return dataset
-
-# #%%
-dataset = getDataCSV("~/circle25N.csv")
-X_train, X_predict, Y_train, Y_predict = train_test_split(
-    dataset['data'], dataset["target"], test_size=0.20)
+# from sklearn.model_selection import GridSearchCV
+strNameDataset='yeast'
+dataset = tools.getDataFromCSV("./dataset/"+strNameDataset+".csv")
+#%%
+# X_train, X_predict, Y_train, Y_predict = train_test_split(
+#     dataset['data'], dataset["target"], test_size=0.20)
 # (X_train, X_predict) = norm.preprocess(X_train, X_predict,1)
 #%%
-
-# from sklearn.datasets import make_classification
-# X, y = make_classification(n_informative=2,
-#                              n_clusters_per_class=1, n_classes=3)
-# df = pd.DataFrame(dict(x=X[:,0], y=X[:,1], label=y))
-# colors = {0:'red', 1:'blue', 2:'green'}
-# fig, ax =plt.subplots()
-# grouped = df.groupby('label')
-# for key, group in grouped:
-#     group.plot(ax=ax, kind='scatter', x='x', y='y', label=key, color=colors[key])
-# plt.show()
-
-# X_train, X_predict, Y_train, Y_predict = train_test_split(
-#     X, y, test_size=0.20)
-
-# quipusClass=Quipus(knn=5,eRadius=0.5,deepNeighbors=4)
-# quipusClass.fit(X_train,Y_train)
-# quipusClass.predict(X_predict,Y_predict)
-
-# #%%
-# from sklearn.datasets import make_blobs
-# X, y = make_blobs(n_samples=100, centers=3, n_features=5)
-# df = pd.DataFrame(dict(x=X[:,0], y=X[:,1], label=y))
-# colors = {0:'red', 1:'blue', 2:'green'}
-# fig, ax =plt.subplots()
-# grouped = df.groupby('label')
-# for key, group in grouped:
-#     group.plot(ax=ax, kind='scatter', x='x', y='y', label=key, color=colors[key])
-# plt.show()
-
-# X_train, X_predict, Y_train, Y_predict = train_test_split(
-#     X, y, test_size=0.20)
-
-# quipusClass=Quipus(knn=5,eRadius=0.5,deepNeighbors=4)
-# quipusClass.fit(X_train,Y_train)
-# quipusClass.predict(X_predict,Y_predict)
-# #%%
-# from sklearn.datasets import make_moons
-# X, y = make_moons(n_samples=100, noise=0.0)
-# df = pd.DataFrame(dict(x=X[:,0], y=X[:,1], label=y))
-# colors = {0:'red', 1:'blue', 2:'green'}
-# fig, ax =plt.subplots()
-# grouped = df.groupby('label')
-# for key, group in grouped:
-#     group.plot(ax=ax, kind='scatter', x='x', y='y', label=key, color=colors[key])
-# plt.show()
-
-# X_train, X_predict, Y_train, Y_predict = train_test_split(
-#     X, y, test_size=0.20)
-
-# quipusClass=Quipus(knn=5,eRadius=0.5,deepNeighbors=4)
-# quipusClass.fit(X_train,Y_train)
-# quipusClass.predict(X_predict,Y_predict)
+# knnTest = 5
+# ePercentile = 0.0
+# bnnTest = 1
+# quipusClass = Quipus(knn=knnTest, ePercentile=ePercentile, bnn=bnnTest, alpha=0.5)
+# kfold = KFold(n_splits=5, random_state=42, shuffle=True)
+# scores = cross_val_score(
+#     quipusClass, dataset["data"], dataset["target"], scoring="accuracy", cv=kfold
+# )
+# print(scores)
+# print("Accuracy: %0.5f (+/- %0.5f)" % (scores.mean(), scores.std() * 2))
 #%%
 
-from sklearn.datasets import make_circles
-from sklearn.datasets import make_moons
-X, y = make_circles(n_samples=100, noise=0.0)
-np.savetxt("circle.csv", np.insert(X,2,y,axis=1), delimiter=",")
-X, y = make_circles(n_samples=100, noise=0.25)
-np.savetxt("circle25.csv", np.insert(X,2,y,axis=1), delimiter=",")
-X, y = make_moons(n_samples=100, noise=0.0)
-np.savetxt("moon0.csv", np.insert(X,2,y,axis=1), delimiter=",")
-X, y = make_moons(n_samples=100, noise=0.25)
-np.savetxt("moon25.csv", np.insert(X,2,y,axis=1), delimiter=",")
-#%%
-# from sklearn.datasets import make_circles
-# X, y = make_circles(n_samples=100, noise=0.25)
-
-
-# from sklearn.datasets import make_circles
-# X, y = make_circles(n_samples=100, noise=0.25)
-# df = pd.DataFrame(dict(x=X[:,0], y=X[:,1], label=y))
-# colors = {0:'red', 1:'blue', 2:'green'}
-# fig, ax =plt.subplots()
-# grouped = df.groupby('label')
-# for key, group in grouped:
-#     group.plot(ax=ax, kind='scatter', x='x', y='y', label=key, color=colors[key])
-# plt.show()
-
 # X_train, X_predict, Y_train, Y_predict = train_test_split(
-#     X, y, test_size=0.20)
+#     dataset["data"], dataset["target"], test_size=0.25, stratify= dataset["target"]
+# )
+# knnTest = 1
+# ePercentile = 0.0
+# bnnTest = 1
+# print('Quipus')
+# quipusClass = Quipus(knn=knnTest, ePercentile=ePercentile, bnn=bnnTest, alpha=0.5)
+# quipusClass.fit(X_train=X_train, Y_train=Y_train)
+# quipusClass.predict(X_test=X_predict, Y_test=Y_predict)
 
-# quipusClass=Quipus(knn=3,eRadius=0.5,deepNeighbors=1)
-# quipusClass.fit(X_train,Y_train)
-# quipusClass.predict(X_predict,Y_predict)
+# print('HLBNC')
+# # bnnTest = 1
+# # knnTest = 1
+# quipusClass = HLNB_BC(knn=knnTest, ePercentile=ePercentile, bnn=bnnTest, alpha=0.5)
+# quipusClass.fit(X_train=X_train, Y_train=Y_train)
+# quipusClass.predict(X_test=X_predict, Y_test=Y_predict)
+#%%
+# tools.drawGraphs(quipusClass.graphs)
 
-# #%%
+#%%
+# k=np.array([1,2,3,4,5,6])
+# asd=np.reshape(k,(-1,1))
+#%%
+# test=10
+# total=[]
+# knnTest=5
+# eRadiusTest=0.0
+# bnnTest=1
+# print ("knn: ",knnTest)
+# print ("e-radius: ",eRadiusTest)
+# print ("bnnTest: ",bnnTest)
+# for alphaTest in [0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0]:
+#     print("alpha: ",alphaTest)
+#     quipusClass=Quipus(knn=knnTest,eRadius=eRadiusTest,bnn=bnnTest,alpha=1.0)
+#     kfold = KFold(n_splits=5, random_state=42, shuffle=True)
+#     scores = cross_val_score(quipusClass,dataset['data'],dataset['target'],scoring="accuracy",cv=kfold)
+#     # scores = cross_val_score(quipusClass,dataset['data'],dataset['target'],scoring="accuracy", cv=5)
+#     total.append(scores)
+#     print(scores)
+#     print("Accuracy: %0.5f (+/- %0.5f)" % (scores.mean(), scores.std() * 2))
+# total=np.array(total)
+# print("----\n->Accuracy Total: %0.5f (+/- %0.5f)" % (total.mean(), total.std() * 2))
 
-# # quipusClass=Quipus(knn=5,eRadius=0.5,deepNeighbors=4)
-# # quipusClass.fit(X_train,Y_train)
-# # quipusClass.predict(X_predict,Y_predict)
+# np.savetxt("AlphaVariation"+str()+str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),np.array(total),delimiter=",")
+#%%
+print("DATASET: "+strNameDataset)
+print('---------')
+# %%
 
 
-# # []
-# # IRIS knn:7 deep 1
-# #IRIS 14/16
-# # wine knn:19 deep 1
-# # red Wine:3 deep 1 0.574
-# # f=open("results.txt",'w')
-# # f.close()
+grid_param = {"knn": range(1, 10), "ePercentile": [0.0,0.5], "bnn": [1], "alpha": [0.0]}
+quipusClass = HLNB_BC()
+gd_sr = GridSearchCV(
+    estimator=quipusClass, param_grid=grid_param, scoring="accuracy", cv=10, n_jobs=-1
+)
+gd_sr.fit(dataset["data"], dataset["target"])
+best_parameters = gd_sr.best_params_
+print(best_parameters)
+print(gd_sr.best_score_)
+print('---------')
 
-# grid_values = {'knn':[5],"bnn":range(1,5),"alpha":[0.25,0.5,0.75,1.0],'eRadius':[0.5]}
-# kfold = KFold(n_splits=5)
-# uruClass=Quipus()
-# clf = GridSearchCV(uruClass, param_grid = grid_values,cv=kfold,scoring = 'accuracy',n_jobs=7)
-# grid_result=clf.fit(dataset['data'],dataset['target'])
-# print("Best Estimator: ",grid_result.best_estimator_.get_params(),' Score: ',grid_result.best_score_)
-
-# # f=open("results.txt",'a')
-# # f.write("Best Estimator: "+str(grid_result.best_estimator_.get_params())+' Score: '+str(grid_result.best_score_)+'\n')
-# # f.close()
-
-# # test=3
-# # total=[]
-# # knnTest=5
-# # eRadiusTest=0.5
-# # print ("knn: ",knnTest)
-# # print ("e-radius: ",eRadiusTest)
-# # for indexi, i in enumerate(range(test)):
-# #     quipusClass=Quipus(knn=knnTest,eRadius=eRadiusTest,deepNeighbors=1)
-# #     kfold = KFold(n_splits=5, random_state=indexi, shuffle=True)
-# #     scores = cross_val_score(quipusClass,dataset['data'],dataset['target'],scoring="accuracy",cv=kfold)
-# #     # scores = cross_val_score(quipusClass,dataset['data'],dataset['target'],scoring="accuracy", cv=5)
-    
-# #     total.append(scores)
-# #     print(scores)
-# #     print("Accuracy: %0.4f (+/- %0.4f)" % (scores.mean(), scores.std() * 2))
-# # total=np.array(total)
-# # print("----\n->Accuracy Total: %0.4f (+/- %0.4f)" % (total.mean(), total.std() * 2))
-
-#  # %%
 
 
 # %%
+
+test = 20
+total = []
+knnTest = gd_sr.best_params_['knn']
+eRadiusTest = 0.0
+bnnTest = 1
+alpha = 0.0
+print("knn: ", knnTest)
+print("e-radius: ", eRadiusTest)
+print("bnnTest: ", bnnTest)
+print("alpha: ", alpha)
+
+for i in range(test):
+    quipusClass = HLNB_BC(knn=knnTest, ePercentile=eRadiusTest, bnn=bnnTest, alpha=alpha)
+    kfold = KFold(n_splits=10, random_state=i + 42, shuffle=True)
+    scores = cross_val_score(
+        quipusClass, dataset["data"], dataset["target"], scoring="accuracy", cv=kfold
+    )
+    # scores = cross_val_score(quipusClass,dataset['data'],dataset['target'],scoring="accuracy", cv=5)
+    total.append(scores)
+    asd = scores.tostring()
+    # print(scores)
+    # print("Accuracy: %0.5f (+/- %0.5f)" % (scores.mean(), scores.std() * 2))
+total = np.array(total)
+np.savetxt(strNameDataset+" scores HLNB_BC knn "+str(knnTest), total, delimiter=",")
+print("--------")
+print(total.mean(), total.std() * 2)
+print('---------')
+
+# print("----\n->Accuracy Total: %0.5f (+/- %0.5f)" % (total.mean(), total.std() * 2))
+# %%
+grid_param = {"knn": range(1, 10), "ePercentile": [0.0,0.5], "bnn": [1], "alpha": [0.0]}
+quipusClass = Quipus()
+gd_sr = GridSearchCV(
+    estimator=quipusClass, param_grid=grid_param, scoring="accuracy", cv=10, n_jobs=-1
+)
+gd_sr.fit(dataset["data"], dataset["target"])
+best_parameters = gd_sr.best_params_
+print(best_parameters)
+print(gd_sr.best_score_)
+print('---------')
+
+#%%
+
+test = 20
+total = []
+knnTest = gd_sr.best_params_['knn']
+eRadiusTest = 0.0
+bnnTest = 1
+alpha = 0.0
+print("knn: ", knnTest)
+print("e-radius: ", eRadiusTest)
+print("bnnTest: ", bnnTest)
+print("alpha: ", alpha)
+
+for i in range(test):
+    quipusClass = Quipus(knn=knnTest, ePercentile=eRadiusTest, bnn=bnnTest, alpha=alpha)
+    kfold = KFold(n_splits=10, random_state=i + 42, shuffle=True)
+    scores = cross_val_score(
+        quipusClass, dataset["data"], dataset["target"], scoring="accuracy", cv=kfold
+    )
+    # scores = cross_val_score(quipusClass,dataset['data'],dataset['target'],scoring="accuracy", cv=5)
+    total.append(scores)
+    asd = scores.tostring()
+    # print(scores)
+    # print("Accuracy: %0.5f (+/- %0.5f)" % (scores.mean(), scores.std() * 2))
+total = np.array(total)
+np.savetxt(strNameDataset+" scores Quipus knn "+str(knnTest), total, delimiter=",")
+print("--------")
+print(total.mean(), total.std() * 2)
+print("----\n->Accuracy Total: %0.5f (+/- %0.5f)" % (total.mean(), total.std() * 2))
+print("--------")
